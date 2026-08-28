@@ -1,0 +1,11 @@
+[package]
+name = "Interprete"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+lalrpop = "0.20"
+lalrpop-util = "0.20"
+
+[build-dependencies]
+lalrpop = "0.20"

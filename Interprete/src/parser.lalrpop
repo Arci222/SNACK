@@ -1,0 +1,88 @@
+use crate::ast::{Expression, IntrospectionKind, Literal, Mutability, Program, ScalarSuffix, Statement, VariableDeclaration, VariableType};
+use std::str::FromStr;
+
+grammar;
+pub Program: Program = {
+    <statements:Stmt*> => Program { statements }
+};
+
+Stmt: Statement = {
+    "let" <spec:DeclarationSpec> <name:ID> "=" <value:Literal> ";" =>
+        Statement::Variable(VariableDeclaration {
+            name,
+            mutability: spec.0,
+            ty: spec.1,
+            value,
+        }),
+    "display" "(" <arguments:DisplayArguments> ")" ";" => Statement::Display(arguments),
+};
+
+DisplayArguments: Vec<Expression> = {
+    => vec![],
+    <first:Expression> <rest:("," <Expression>)*> => {
+        let mut arguments = vec![first];
+        arguments.extend(rest);
+        arguments
+    }
+};
+
+Expression: Expression = {
+    <value:Literal> => Expression::Literal(value),
+    <introspection:Introspection> => introspection,
+    <name:ID> => Expression::Variable(name),
+};
+
+Introspection: Expression = {
+    "type_of" "(" <argument:IntrospectionArgument> ")" => Expression::Introspection { kind: IntrospectionKind::Type, argument: Box::new(argument) },
+    "sign_of" "(" <argument:IntrospectionArgument> ")" => Expression::Introspection { kind: IntrospectionKind::Sign, argument: Box::new(argument) },
+    "bit_size_of" "(" <argument:IntrospectionArgument> ")" => Expression::Introspection { kind: IntrospectionKind::BitSize, argument: Box::new(argument) },
+    "is_mut" "(" <argument:IntrospectionArgument> ")" => Expression::Introspection { kind: IntrospectionKind::IsMut, argument: Box::new(argument) },
+    "identity_of" "(" <argument:IntrospectionArgument> ")" => Expression::Introspection { kind: IntrospectionKind::Identity, argument: Box::new(argument) },
+};
+
+IntrospectionArgument: Expression = {
+    <name:ID> => Expression::Variable(name),
+    <value:Literal> => Expression::Literal(value),
+    <introspection:Introspection> => introspection,
+};
+
+DeclarationSpec: (Mutability, VariableType) = {
+    => (Mutability::Mutable, VariableType::Inferred),
+    "." <mutability:Mutability> "." "bool" => (mutability, VariableType::Bool),
+    "." <mutability:Mutability> <unsigned:("." "unsigned")?> "." <bits:BitWidth> <suffix:("." <ScalarSuffix>)?> =>
+        match suffix {
+            Some(ScalarSuffix::Float) => (mutability, VariableType::Float { bits }),
+            Some(ScalarSuffix::String) => (mutability, VariableType::String { bits }),
+            Some(ScalarSuffix::Bool) => (mutability, VariableType::Bool),
+            None => (mutability, VariableType::Integer { bits, unsigned: unsigned.is_some() }),
+        }
+};
+
+Mutability: Mutability = {
+    "mut" => Mutability::Mutable,
+    "const" => Mutability::Constant,
+};
+
+BitWidth: u8 = {
+    "8bit" => 8,
+    "16bit" => 16,
+    "32bit" => 32,
+};
+
+ScalarSuffix: ScalarSuffix = {
+    "float" => ScalarSuffix::Float,
+    "string" => ScalarSuffix::String,
+    "bool" => ScalarSuffix::Bool,
+};
+
+Literal: Literal = {
+    <n:r"-?[0-9]+"> => Literal::Integer(i64::from_str(n).unwrap()),
+    <n:r"-?[0-9]+\.[0-9]+"> => Literal::Float(f64::from_str(n).unwrap()),
+    <s:r#"\"[^\"]*\""#> => Literal::String(s[1..s.len() - 1].to_string()),
+    "true" => Literal::Bool(true),
+    "false" => Literal::Bool(false),
+};
+
+ID: String = {
+    <s:r"[a-zA-Z_][a-zA-Z0-9_]*"> => s.to_string(),
+};

@@ -1,0 +1,11 @@
+let.mut.unsigned.8bit age = 30;
+let.const.16bit.string label = "temp_A0";
+
+display("Hello, world!");
+display("Eta:", age);
+display(type_of(age));
+display(sign_of(age));
+display(bit_size_of(age));
+display(is_mut(age));
+display(identity_of(age));
+display("Etichetta:", label, "modificabile:", is_mut(label));
