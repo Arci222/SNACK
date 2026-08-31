@@ -1,0 +1,2 @@
+# Artefatti rigenerabili di Cargo: non vanno versionati.
+/target/
